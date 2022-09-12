@@ -1,6 +1,5 @@
 package io.lpamintuan.securityjwt.controllers;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import javax.servlet.http.HttpServletRequest;
