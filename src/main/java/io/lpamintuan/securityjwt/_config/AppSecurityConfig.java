@@ -26,7 +26,12 @@ public class AppSecurityConfig {
 
         http.authorizeRequests()
                 .mvcMatchers(HttpMethod.GET, "/userinfo").authenticated()
+                .mvcMatchers(HttpMethod.POST, "/signin").anonymous()
                 .mvcMatchers("/error").permitAll();
+
+        http.httpBasic().disable();
+        http.formLogin().disable();
+        http.csrf().disable();
 
         http.exceptionHandling()
                 .authenticationEntryPoint(authenticationEntryPoint);

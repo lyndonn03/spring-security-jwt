@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -15,8 +16,12 @@ import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.lpamintuan.securityjwt._config.AppAuthenticationEntryPoint;
 import io.lpamintuan.securityjwt._config.AppSecurityConfig;
+import io.lpamintuan.securityjwt.controllers.templates.AuthenticationTemplate;
 import io.lpamintuan.securityjwt.models.UserInfo;
 import io.lpamintuan.securityjwt.services.AppService;
 
@@ -38,11 +43,14 @@ public class AppControllerTest {
     @MockBean
     private AppService appService;
 
+    private ObjectMapper mapper;
+
     @BeforeEach
     public void setUpEachTest() {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(ctx)
                 .apply(springSecurity())
                 .build();
+        this.mapper = new ObjectMapper();
     }
 
     @Test
@@ -100,6 +108,72 @@ public class AppControllerTest {
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isUnauthorized());
 
+    }
+
+    @Test
+    public void signinRouteLogInUsersWithSuccesfulDetails() throws Exception {
+        AuthenticationTemplate creds = new AuthenticationTemplate("testUsername", "testPassword");
+        given(appService.signinUser(any()))
+                .willReturn("testToken");
+
+        mockMvc.perform(post("/signin")
+                .content(mapper.writeValueAsString(creds))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("testToken"));
+
+        verify(appService).signinUser(creds);
+                
+    }
+
+    @Test
+    public void signinRouteReturnsErrorIfUserNotFound() throws Exception {
+
+        AuthenticationTemplate creds = new AuthenticationTemplate("testUsername", "");
+        given(appService.signinUser(any()))
+                .willThrow(new UsernameNotFoundException("Invalid user."));
+
+        mockMvc.perform(post("/signin")
+                .content(mapper.writeValueAsString(creds))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.content").value("Invalid user."))
+                .andExpect(jsonPath("$.path").value("/signin"));
+               
+        verify(appService).signinUser(creds);
+
+    }
+
+    @Test
+    public void signinRouteReturnsErrorIfUserPasswordIsInvalid() throws JsonProcessingException, Exception {
+
+        AuthenticationTemplate creds = new AuthenticationTemplate("testUsername", "");
+        given(appService.signinUser(any()))
+                .willThrow(new BadCredentialsException("Invalid creds."));
+
+        mockMvc.perform(post("/signin")
+                .content(mapper.writeValueAsString(creds))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.content").value("Invalid creds."))
+                .andExpect(jsonPath("$.path").value("/signin"));
+
+    }
+
+    @Test
+    @WithMockUser(username = "testUsername")
+    public void loginRouteFailedIfUserIsAlreadyLoggedIn() throws Exception {
+
+        mockMvc.perform(post("/signin")
+                .content("{}"))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isForbidden());
+                
     }
 
 }
