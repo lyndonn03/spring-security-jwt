@@ -1,2 +1,2 @@
-# spring-security-jwt
+# [WIP] spring-security-jwt
 authentication and authorization with jwt
