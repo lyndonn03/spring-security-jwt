@@ -1,6 +1,12 @@
 package io.lpamintuan.securityjwt.services;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,7 +33,21 @@ public class AppService {
     }
 
     public UserInfo getUserInfo(String username) {
-        return (UserInfo) userDetailsService.loadUserByUsername(username);
+        User user = (User) userDetailsService.loadUserByUsername(username);
+
+        UserInfo userInfo = new UserInfo();
+        userInfo.setUsername(user.getUsername());
+        Set<GrantedAuthority> authorities = user.getAuthorities().stream()
+                                                .collect(Collectors.toSet());
+
+        userInfo.setAuthorities(authorities);
+        userInfo.setIsAccountNonExpired(user.isAccountNonExpired());
+        userInfo.setIsAccountNonLocked(user.isAccountNonLocked());
+        userInfo.setIsCredentialsNonExpired(user.isCredentialsNonExpired());
+        userInfo.setIsEnabled(user.isEnabled());
+
+        return userInfo;
+
     }
 
     public String signinUser(AuthenticationTemplate creds) {

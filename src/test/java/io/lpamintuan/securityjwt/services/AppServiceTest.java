@@ -7,6 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,6 +19,8 @@ import io.lpamintuan.securityjwt.models.UserInfo;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
+
+import java.util.HashSet;
 
 @ExtendWith(MockitoExtension.class)
 public class AppServiceTest {
@@ -41,9 +44,9 @@ public class AppServiceTest {
     @Test
     public void getUserInfoShouldReturnUserInfoSuccessfullyIfUserIsInDB() {
 
-        UserInfo user = new UserInfo("testUsername", "pass");
+        UserDetails user = new User("testUsername", "pass", new HashSet<>());
         given(userDetailsService.loadUserByUsername(anyString()))
-            .willReturn((UserDetails)user);
+            .willReturn((User)user);
 
         UserInfo result = appService.getUserInfo("testUsername");
 

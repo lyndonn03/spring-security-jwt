@@ -7,14 +7,14 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,17 +27,19 @@ import io.lpamintuan.securityjwt.services.AppService;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.HashSet;
+
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.*;
 
 @WebMvcTest(AppController.class)
 @Import({ AppSecurityConfig.class, AppAuthenticationEntryPoint.class })
 public class AppControllerTest {
 
-    @Autowired
-    private WebApplicationContext ctx;
+    @MockBean
+    private AuthenticationManager manager;
 
+    @Autowired
     private MockMvc mockMvc;
 
     @MockBean
@@ -47,15 +49,14 @@ public class AppControllerTest {
 
     @BeforeEach
     public void setUpEachTest() {
-        this.mockMvc = MockMvcBuilders.webAppContextSetup(ctx)
-                .apply(springSecurity())
-                .build();
         this.mapper = new ObjectMapper();
     }
 
     @Test
-    @WithMockUser(username = "test", authorities = "USER")
+    @WithMockUser(username = "test", roles = "USER")
     public void userinfoRouteSuccessfullyCalled() throws Exception {
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken("test", null, new HashSet<>()));
 
         mockMvc.perform(get("/userinfo")
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -70,6 +71,8 @@ public class AppControllerTest {
                 .isAccountNonExpired(true)
                 .build();
         given(appService.getUserInfo(anyString())).willReturn(user);
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken("testUsername", null, new HashSet<>()));
 
         mockMvc.perform(get("/userinfo")
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -87,6 +90,8 @@ public class AppControllerTest {
     public void userinfoRouteReturnsErrorIfNoUserInfoFound() throws Exception {
         given(appService.getUserInfo(anyString()))
                 .willThrow(new UsernameNotFoundException("Invalid user."));
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken("testUsername", null, new HashSet<>()));
 
         mockMvc.perform(get("/userinfo"))
                 .andDo(MockMvcResultHandlers.print())
@@ -103,6 +108,9 @@ public class AppControllerTest {
     @WithAnonymousUser
     public void userinfoRouteReturnsUnauthorizedWhenNotAuthenticated() throws Exception {
 
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken("testUsername", null));
+
         mockMvc.perform(get("/userinfo")
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
                 .andDo(MockMvcResultHandlers.print())
@@ -115,6 +123,9 @@ public class AppControllerTest {
         AuthenticationTemplate creds = new AuthenticationTemplate("testUsername", "testPassword");
         given(appService.signinUser(any()))
                 .willReturn("testToken");
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken("testUsername", null));
+
 
         mockMvc.perform(post("/signin")
                 .content(mapper.writeValueAsString(creds))
@@ -133,6 +144,9 @@ public class AppControllerTest {
         AuthenticationTemplate creds = new AuthenticationTemplate("testUsername", "");
         given(appService.signinUser(any()))
                 .willThrow(new UsernameNotFoundException("Invalid user."));
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken(null, null));
+
 
         mockMvc.perform(post("/signin")
                 .content(mapper.writeValueAsString(creds))
@@ -153,6 +167,9 @@ public class AppControllerTest {
         AuthenticationTemplate creds = new AuthenticationTemplate("testUsername", "");
         given(appService.signinUser(any()))
                 .willThrow(new BadCredentialsException("Invalid creds."));
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken(null, null));
+
 
         mockMvc.perform(post("/signin")
                 .content(mapper.writeValueAsString(creds))
@@ -168,6 +185,9 @@ public class AppControllerTest {
     @Test
     @WithMockUser(username = "testUsername")
     public void loginRouteFailedIfUserIsAlreadyLoggedIn() throws Exception {
+
+        given(manager.authenticate(any()))
+                .willReturn(new UsernamePasswordAuthenticationToken(null, null));
 
         mockMvc.perform(post("/signin")
                 .content("{}"))
