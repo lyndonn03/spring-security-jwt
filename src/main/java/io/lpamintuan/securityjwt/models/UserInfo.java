@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
@@ -35,12 +34,20 @@ public class UserInfo implements UserDetails {
     private Boolean isAccountNonLocked;
     private Boolean isCredentialsNonExpired;
     private Boolean isEnabled;
+    private Set<GrantedAuthority> authorities;
 
-    @Builder.Default
-    private Set<GrantedAuthority> authorities = new HashSet<>();
+    public UserInfo(String username, String password) {
+        this.username = username;
+        this.password = password;
+        this.isAccountNonExpired = true;
+        this.isAccountNonLocked = true;
+        this.isCredentialsNonExpired = true;
+        this.isEnabled = true;
+        this.authorities = new HashSet<>();
+    }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
+    public Collection<GrantedAuthority> getAuthorities() {
         return this.authorities;
     }
 
@@ -78,7 +85,7 @@ public class UserInfo implements UserDetails {
         return this.isEnabled;
     }
 
-    public void addRole(SimpleGrantedAuthority authority) {
+    public void addRole(GrantedAuthority authority) {
         this.authorities.add(authority);
     }
     

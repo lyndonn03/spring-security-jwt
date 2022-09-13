@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import io.lpamintuan.securityjwt.components.JwtsBuilder;
 import io.lpamintuan.securityjwt.controllers.templates.AuthenticationTemplate;
 import io.lpamintuan.securityjwt.models.UserInfo;
 
@@ -29,17 +30,18 @@ public class AppServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private JwtsBuilder jwtsBuilder;
+
     @BeforeEach
     public void setUpEeachTest() {
-        this.appService = new AppService(userDetailsService, passwordEncoder);
+        this.appService = new AppService(userDetailsService, passwordEncoder, jwtsBuilder);
     }
 
     @Test
     public void getUserInfoShouldReturnUserInfoSuccessfullyIfUserIsInDB() {
 
-        UserInfo user = UserInfo.builder()
-                            .username("testUsername")
-                            .build();
+        UserInfo user = new UserInfo("testUsername", "pass");
         given(userDetailsService.loadUserByUsername(anyString()))
             .willReturn((UserDetails)user);
 
@@ -66,20 +68,26 @@ public class AppServiceTest {
 
     @Test
     public void signinUserReturnsTokenWhenSuccessful() {
-        UserDetails user = UserInfo.builder().username("testUsername").build();
+        UserDetails user = new UserInfo("testUsername", "pass");
         given(userDetailsService.loadUserByUsername(anyString()))
             .willReturn(user);
+        given(passwordEncoder.matches(any(), any()))
+            .willReturn(true);
+        given(jwtsBuilder.generate(user.getUsername()))
+            .willReturn("sampleToken");
 
         String result = appService.signinUser(new AuthenticationTemplate("testUsername", "testPass"));
 
         assertThat(result).isNotNull();
+        assertThat(result).isEqualTo("sampleToken");
         verify(userDetailsService).loadUserByUsername("testUsername");
+        verify(jwtsBuilder).generate("testUsername");
 
     }
 
     @Test
     public void signinUserThrowsExceptionWhenPasswordNotValid() {
-        UserDetails user = UserInfo.builder().username("testUsername").password("pass123").build();
+        UserDetails user = new UserInfo("testUsername", "pass");
         AuthenticationTemplate creds = new AuthenticationTemplate("testUsername", "pass");
         given(userDetailsService.loadUserByUsername(anyString()))
             .willReturn(user);

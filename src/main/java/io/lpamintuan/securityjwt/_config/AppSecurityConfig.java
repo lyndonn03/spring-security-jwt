@@ -1,5 +1,7 @@
 package io.lpamintuan.securityjwt._config;
 
+import javax.crypto.SecretKey;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +15,8 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import io.lpamintuan.securityjwt.models.UserInfo;
 
 @Configuration
@@ -48,14 +52,8 @@ public class AppSecurityConfig {
     @Bean
     UserDetailsService userDetailsService() {
 
-        UserInfo user1 = UserInfo.builder()
-                .username("user1")
-                .password("pass1")
-                .build();
-        UserInfo user2 = UserInfo.builder()
-                .username("user2")
-                .password("pass2")
-                .build();
+        UserInfo user1 = new UserInfo("user1", "pass1");
+        UserInfo user2 = new UserInfo("user2", "pass2");
 
         user1.addRole(new SimpleGrantedAuthority("ROLE_USER"));
         user2.addRole(new SimpleGrantedAuthority("ROLE_ADMIN"));
@@ -65,6 +63,11 @@ public class AppSecurityConfig {
         manager.createUser(user2);
 
         return manager;
+    }
+
+    @Bean
+    SecretKey jwtKey() {
+        return Keys.secretKeyFor(SignatureAlgorithm.HS256);
     }
 
 }
